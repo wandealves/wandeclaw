@@ -1,0 +1,32 @@
+{
+  "name": "wandeclaw",
+  "version": "1.0.0",
+  "description": "Agente pessoal de IA local controlado pelo Telegram (baseado nas specs do SandecoClaw)",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "nodemon --watch src --ext ts --exec tsx src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@grammyjs/auto-retry": "^2.0.2",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.8",
+    "grammy": "^1.46.0",
+    "js-yaml": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.5",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
