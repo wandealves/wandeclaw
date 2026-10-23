@@ -1,10 +1,10 @@
-# Spec: PRD — SandecoClaw Core
+# Spec: PRD — WandersonClaw Core
 
 **Versão:** 1.0
 **Status:** Aprovada
-**Autor:** SandecoClaw Agent
-**Data:** 2026-03-06
-**Reviewers:** Sandeco
+**Autor:** WandersonClaw Agent
+**Data:** 2026-10-23
+**Reviewers:** Wanderson
 
 ---
 
@@ -52,13 +52,13 @@ A ascensão de LLMs super eficientes (Gemini 1.5/2.0+ e DeepSeek) somada com a f
 
 ## 5. Usuários e Personas
 
-**Usuário primário:** Sandeco (proprietário), acessando via dispositivo móvel ou desktop via cliente Telegram, utilizando IDs em whitelist restrita.
+**Usuário primário:** Wanderson (proprietário), acessando via dispositivo móvel ou desktop via cliente Telegram, utilizando IDs em whitelist restrita.
 
 **Jornada atual (sem a feature):**
 O usuário tem que gerir manualmente as APIs ou logar em múltiplas abas web (ChatGPT, Gemini) para acionar "skills" em blocos de texto independentes sem integrações de arquivos no próprio SO local.
 
 **Jornada futura (com a feature):**
-O usuário envia um chat no Telegram, o SandecoClaw roda local em background num terminal, chama LLMs, lê Skills em pastas locais, aciona ferramentas e responde no mesmo chat de forma orgânica.
+O usuário envia um chat no Telegram, o WandersonClaw roda local em background num terminal, chama LLMs, lê Skills em pastas locais, aciona ferramentas e responde no mesmo chat de forma orgânica.
 
 ---
 

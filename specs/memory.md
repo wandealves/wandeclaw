@@ -2,14 +2,14 @@
 
 **Versão:** 1.0
 **Status:** Aprovada
-**Autor:** SandecoClaw Agent
-**Data:** 2026-03-06
+**Autor:** WandesonClaw Agent
+**Data:** 2026-10-23
 
 ---
 
 ## 1. Resumo
 
-O módulo de persistência de estado do SandecoClaw gerencia tanto as conversas de longo prazo em banco de dados SQLite (`better-sqlite3`) quanto atua como manager da janela de contexto para impedir que o limite maximo do envelope de tokens da IA (Context Window) estoure.
+O módulo de persistência de estado do WandesonClaw gerencia tanto as conversas de longo prazo em banco de dados SQLite (`better-sqlite3`) quanto atua como manager da janela de contexto para impedir que o limite maximo do envelope de tokens da IA (Context Window) estoure.
 
 ---
 
@@ -126,7 +126,7 @@ Sem foreign keys restritas ativadas com pragma foreign_keys=ON pra priorizar ins
 
 ## 12. Segurança e Privacidade
 
-- **Arquivos DB Sensíveis:** O `sandecoclaw.db` jamais pode ir pro Git (Adicionar no `.gitignore` /data).
+- **Arquivos DB Sensíveis:** O `WandesonClaw.db` jamais pode ir pro Git (Adicionar no `.gitignore` /data).
 - **Sem senhas cruas no prompt:** O DB grava as msgs do usuário. Não logaremos APIs ali como System Prompts secretos pra evitar persistencia indevida.
 
 ---

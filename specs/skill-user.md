@@ -2,8 +2,8 @@
 
 **Versão:** 1.0
 **Status:** Aprovada
-**Autor:** SandeClaw Agent
-**Data:** 2026-03-06
+**Autor:** WandersonClaw Agent
+**Data:** 2026-10-23
 
 ---
 

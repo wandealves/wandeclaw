@@ -1,15 +1,15 @@
-# Arquitetura do Projeto: SandecoClaw
+# Arquitetura do Projeto: WandesonClaw
 
 **Versão:** 1.0  
 **Status:** Definição Central de Arquitetura  
-**Autor:** Antigravity (IA)  
-**Data:** 2026-03-09  
+**Autor:** Claude Code (IA)  
+**Data:** 2026-10-23  
 
 ---
 
 ## 2.1 Visão Geral
 
-O **SandecoClaw** é um agente pessoal de Inteligência Artificial projetado para operar localmente no desktop do usuário. Sua interface primária de controle é o Telegram, permitindo uma interação fluida via texto, documentos e voz. O sistema é construído para ser modular, extensível através de "skills" (habilidades) e totalmente focado na privacidade, mantendo a persistência de dados localmente.
+O **WandesonClaw** é um agente pessoal de Inteligência Artificial projetado para operar localmente no desktop do usuário. Sua interface primária de controle é o Telegram, permitindo uma interação fluida via texto, documentos e voz. O sistema é construído para ser modular, extensível através de "skills" (habilidades) e totalmente focado na privacidade, mantendo a persistência de dados localmente.
 
 A arquitetura segue um fluxo de pipeline onde as mensagens do Telegram são capturadas, processadas por um motor de raciocínio (Agent Loop) que utiliza LLMs externos (como Gemini ou DeepSeek) apenas para inferência, e responde de volta ao usuário de forma inteligente, podendo inclusive gerar arquivos ou respostas em áudio.
 
@@ -47,7 +47,7 @@ O sistema adota um estilo **Monolito Modular com Sistema de Plugins**.
 graph TB
     User([👤 Usuário Sandeco])
     Telegram[📱 Telegram Client]
-    System[🏗️ SandecoClaw Engine]
+    System[🏗️ WandesonClaw Engine]
     LLM[🧠 LLM APIs - Gemini/DeepSeek]
     Whisper[🎙️ Whisper Local - STT]
     EdgeTTS[🔊 Edge-TTS - TTS]

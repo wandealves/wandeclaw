@@ -2,14 +2,14 @@
 
 **Versão:** 1.0
 **Status:** Aprovada
-**Autor:** SandecoClaw Agent
-**Data:** 2026-03-06
+**Autor:** WandersonClaw Agent
+**Data:** 2026-10-23
 
 ---
 
 ## 1. Resumo
 
-O **Agent Loop** é a engrenagem central do SandecoClaw. Ele implementa o padrão ReAct (Reasoning and Acting). É o módulo onde uma ação bruta entra, é submetida ao LLM base (Thought), uma ou mais ferramentas são chamadas (Action+Observation), até um veredito de resposta final ser chegado, repetindo em loop limitado de iterações para evitar impasses de contexto infinito.
+O **Agent Loop** é a engrenagem central do WandersonClaw. Ele implementa o padrão ReAct (Reasoning and Acting). É o módulo onde uma ação bruta entra, é submetida ao LLM base (Thought), uma ou mais ferramentas são chamadas (Action+Observation), até um veredito de resposta final ser chegado, repetindo em loop limitado de iterações para evitar impasses de contexto infinito.
 
 ---
 

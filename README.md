@@ -1,7 +1,5 @@
 # WandeClaw
 
-26:14
-
 Agente pessoal de IA que roda localmente e é controlado pelo Telegram. Implementação das specs do
 [SandeClaw](https://github.com/sandeco/prompts/tree/main/SandeClaw/specs) (cópia local em `specs/`).
 
