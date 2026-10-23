@@ -56,7 +56,7 @@ function setup(transcript: () => Promise<string> = async () => 'texto falado') {
     speechToText,
     tmp,
     maxDocumentBytes: 1024 * 1024,
-  }).register();
+  }, async () => 'LLM: deepseek → groq').register();
 
   let updateId = 0;
   const send = async (message: Record<string, unknown>, from = OWNER) => {
@@ -123,4 +123,10 @@ test('áudio mudo e Whisper ausente geram avisos sem acionar o agente', async ()
   await missing.send({ voice: { file_id: path.join('tests', 'fixtures', 'sample.pdf'), file_unique_id: 'v', duration: 1 } });
   assert.deepEqual(missing.replies, ['⚠️ Não consegui inicializar o Whisper local agora.']);
   assert.deepEqual([...silent.handled, ...missing.handled], []);
+});
+
+test('/status responde com o relatório', async () => {
+  const { send, replies } = setup();
+  await send({ text: '/status', entities: [{ type: 'bot_command', offset: 0, length: 7 }] });
+  assert.deepEqual(replies, ['LLM: deepseek → groq']);
 });

@@ -13,6 +13,15 @@ export class Config {
   readonly fallbackProviders: string[];
   readonly routerProvider: string | null;
   readonly llmTimeoutMs: number;
+  readonly cliTimeoutMs: number;
+  readonly claudeCode: { command: string; model?: string; allowedTools: string; permissionMode: string };
+  readonly openCode: {
+    command: string;
+    model?: string;
+    agent?: string;
+    permissions: Record<string, string>;
+    autoApprove: boolean;
+  };
   readonly agentName: string;
   readonly maxIterations: number;
   readonly memoryWindowSize: number;
@@ -41,6 +50,22 @@ export class Config {
     this.fallbackProviders = Config.parseList(env.LLM_FALLBACK_PROVIDERS);
     this.routerProvider = env.ROUTER_PROVIDER?.trim().toLowerCase() || null;
     this.llmTimeoutMs = Config.positiveInt(env.LLM_TIMEOUT_MS, 120_000);
+    // Agentes CLI rodam o próprio loop de ferramentas: precisam de mais tempo.
+    this.cliTimeoutMs = Config.positiveInt(env.CLI_TIMEOUT_MS, 300_000);
+    this.claudeCode = {
+      command: env.CLAUDE_CODE_COMMAND?.trim() || 'claude',
+      model: env.CLAUDE_CODE_MODEL?.trim() || undefined,
+      // Sem Bash por padrão: mensagens do Telegram não executam comandos no host.
+      allowedTools: (env.CLAUDE_CODE_ALLOWED_TOOLS ?? 'Read,Edit,Write,Glob,Grep,WebSearch,WebFetch').replace(/\s+/g, ''),
+      permissionMode: env.CLAUDE_CODE_PERMISSION_MODE?.trim() || 'dontAsk',
+    };
+    this.openCode = {
+      command: env.OPENCODE_COMMAND?.trim() || 'opencode',
+      model: env.OPENCODE_MODEL?.trim() || undefined,
+      agent: env.OPENCODE_AGENT?.trim() || undefined,
+      permissions: Config.parsePermissions(env.OPENCODE_PERMISSIONS),
+      autoApprove: env.OPENCODE_AUTO_APPROVE?.trim().toLowerCase() === 'true',
+    };
     this.agentName = env.AGENT_NAME?.trim() || 'WandeClaw';
     // EC-03 (agent-loop): sem MAX_ITERATIONS válido, o fallback é 5.
     this.maxIterations = Config.positiveInt(env.MAX_ITERATIONS, 5);
@@ -93,6 +118,18 @@ export class Config {
       .split(',')
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
+  }
+
+  /** Formato "bash=deny,edit=allow"; o padrão nega Bash e acesso fora do workspace. */
+  private static parsePermissions(raw: string | undefined): Record<string, string> {
+    const source = raw?.trim() || 'bash=deny,external_directory=deny';
+    const rules: Record<string, string> = {};
+    for (const pair of source.split(',')) {
+      const [tool, action] = pair.split('=').map((part) => part?.trim());
+      // "ask" não é aceito: em modo headless não há quem responda.
+      if (tool && ['allow', 'deny'].includes(action ?? '')) rules[tool] = action!;
+    }
+    return rules;
   }
 
   private static nonNegativeInt(raw: string | undefined, fallback: number): number {

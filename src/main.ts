@@ -4,6 +4,7 @@ import { AgentController } from './agent/AgentController.js';
 import { AgentLoop } from './agent/AgentLoop.js';
 import { SystemPromptBuilder } from './agent/SystemPromptBuilder.js';
 import { Config } from './config/Config.js';
+import { DependencyChecker } from './diagnostics/DependencyChecker.js';
 import { ProviderFactory } from './llm/ProviderFactory.js';
 import { AudioConverter } from './media/AudioConverter.js';
 import { DocumentExtractor } from './media/DocumentExtractor.js';
@@ -29,8 +30,25 @@ const logger = new Logger('Main');
 async function main(): Promise<void> {
   const config = Config.get();
 
+  const llmChain = [...new Set([config.llmProvider, ...config.fallbackProviders])];
+  if (llmChain.length < 2) {
+    logger.warn(`Sem fallback efetivo para "${config.llmProvider}": defina em LLM_FALLBACK_PROVIDERS um provedor diferente do principal.`);
+  }
+
+  const dependencies = DependencyChecker.fromConfig(config, llmChain);
+  const startupStatus = await dependencies.check();
+  for (const status of startupStatus) {
+    if (status.ok) logger.info(`✅ ${status.purpose}: ${status.detail}`);
+    else logger.warn(`${status.purpose}: ${status.detail}`);
+  }
+  // Se toda a cadeia de LLM depende de CLIs ausentes, o agente não tem como raciocinar.
+  const missing = new Set(startupStatus.filter((status) => !status.ok).map((status) => status.purpose));
+  if (llmChain.every((name) => ProviderFactory.isCliProvider(name) && missing.has(`LLM ${name}`))) {
+    throw new Error(`Nenhum provedor de LLM utilizável: CLI(s) ausente(s) para ${llmChain.join(', ')}.`);
+  }
+
   const providers = new ProviderFactory(config);
-  const llm = providers.createWithFallback([config.llmProvider, ...config.fallbackProviders]);
+  const llm = providers.createWithFallback(llmChain);
   const routerLlm = config.routerProvider
     ? providers.createWithFallback([config.routerProvider, config.llmProvider])
     : llm;
@@ -50,9 +68,10 @@ async function main(): Promise<void> {
 
   const registry = ToolFactory.createRegistry(config);
   const agentLoop = new AgentLoop(llm, registry, new SystemPromptBuilder(config.agentName), config.maxIterations);
+  const skillLoader = new SkillLoader(config.skillsDir);
   const controller = new AgentController(
     memory,
-    new SkillLoader(config.skillsDir),
+    skillLoader,
     new SkillRouter(routerLlm),
     new SkillExecutor(agentLoop),
     config.ttsVoice,
@@ -63,13 +82,24 @@ async function main(): Promise<void> {
   const bot = new Bot(config.telegramBotToken);
   bot.api.config.use(autoRetry());
   const output = new TelegramOutputHandler(tmp, TextToSpeechFactory.create(config, tmp), converter);
-  new TelegramInputHandler(bot, config.allowedUserIds, controller, output, {
+  const statusReport = async () =>
+    [
+      `🤖 ${config.agentName}`,
+      `LLM: ${llm.name}`,
+      `Router: ${routerLlm.name}`,
+      `Skills: ${skillLoader.loadAll().length} instalada(s)`,
+      '',
+      'Dependências:',
+      DependencyChecker.format(await dependencies.check()),
+    ].join('\n');
+  const media = {
     downloader: new TelegramFileDownloader(bot.api, config.telegramBotToken, tmp),
     documents: new DocumentExtractor(config.maxDocumentBytes),
     speechToText: SpeechToTextFactory.create(config, tmp, converter),
     tmp,
     maxDocumentBytes: config.maxDocumentBytes,
-  }).register();
+  };
+  new TelegramInputHandler(bot, config.allowedUserIds, controller, output, media, statusReport).register();
   bot.catch((err) => logger.error(`Erro no update ${err.ctx.update.update_id}`, err.error));
 
   const shutdown = async (signal: string) => {

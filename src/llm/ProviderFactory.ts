@@ -1,5 +1,7 @@
 import { Config } from '../config/Config.js';
 import { Logger } from '../utils/Logger.js';
+import { ClaudeCodeProvider } from './cli/ClaudeCodeProvider.js';
+import { OpenCodeProvider } from './cli/OpenCodeProvider.js';
 import { FallbackProvider } from './FallbackProvider.js';
 import { DeepSeekProvider } from './providers/DeepSeekProvider.js';
 import { GeminiProvider } from './providers/GeminiProvider.js';
@@ -15,6 +17,9 @@ interface ProviderPreset {
   defaultModel: string;
 }
 
+/** Agentes de linha de comando: usam o login da própria CLI, sem API key no .env. */
+type CliBuilder = (config: Config) => ILlmProvider;
+
 const logger = new Logger('ProviderFactory');
 
 /**
@@ -27,13 +32,27 @@ export class ProviderFactory {
     groq: { ctor: GroqProvider, apiKeyEnv: 'GROQ_API_KEY', modelEnv: 'GROQ_MODEL', defaultModel: 'llama-3.3-70b-versatile' },
   };
 
+  private static readonly cliPresets: Record<string, CliBuilder> = {
+    'claude-code': (config) =>
+      new ClaudeCodeProvider(config.claudeCode.command, config.workspaceDir, config.cliTimeoutMs, config.claudeCode),
+    opencode: (config) =>
+      new OpenCodeProvider(config.openCode.command, config.workspaceDir, config.cliTimeoutMs, config.openCode),
+  };
+
   constructor(private readonly config: Config) {}
 
   static availableProviders(): string[] {
-    return Object.keys(ProviderFactory.presets);
+    return [...Object.keys(ProviderFactory.presets), ...Object.keys(ProviderFactory.cliPresets)];
+  }
+
+  static isCliProvider(name: string): boolean {
+    return name in ProviderFactory.cliPresets;
   }
 
   create(name: string): ILlmProvider {
+    const cli = ProviderFactory.cliPresets[name];
+    if (cli) return cli(this.config);
+
     const preset = ProviderFactory.presets[name];
     if (!preset) {
       throw new Error(`Provedor "${name}" desconhecido. Disponíveis: ${ProviderFactory.availableProviders().join(', ')}`);

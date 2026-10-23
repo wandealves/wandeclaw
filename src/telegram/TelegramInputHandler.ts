@@ -55,6 +55,8 @@ export class TelegramInputHandler {
     private readonly controller: AgentController,
     private readonly output: TelegramOutputHandler,
     private readonly media: MediaServices,
+    /** Relatório do /status (provedores, dependências). */
+    private readonly statusReport: () => Promise<string> = async () => 'Status indisponível.',
   ) {}
 
   register(): void {
@@ -63,7 +65,7 @@ export class TelegramInputHandler {
 
     this.bot.command('start', (ctx) =>
       ctx.reply(
-        'Olá! Estou online. Mande texto, áudio, PDF ou .md.\n\n/novo — inicia uma nova conversa\n/skills — lista as skills instaladas',
+        'Olá! Estou online. Mande texto, áudio, PDF ou .md.\n\n/novo — inicia uma nova conversa\n/skills — lista as skills instaladas\n/status — provedores e dependências',
       ),
     );
     this.bot.command('novo', async (ctx) => {
@@ -80,6 +82,11 @@ export class TelegramInputHandler {
     });
 
     // Handlers sem await: um download/transcrição longo não bloqueia as demais mensagens (RNF-01).
+    this.bot.command('status', async (ctx) => {
+      await ctx.replyWithChatAction('typing').catch(() => undefined);
+      await ctx.reply(await this.statusReport());
+    });
+
     this.bot.on('message:text', (ctx) => void this.guard(ctx, () => this.handleText(ctx)));
     this.bot.on('message:document', (ctx) => void this.guard(ctx, () => this.handleDocument(ctx)));
     this.bot.on(['message:voice', 'message:audio'], (ctx) => void this.guard(ctx, () => this.handleAudio(ctx)));
