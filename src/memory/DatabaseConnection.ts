@@ -18,6 +18,7 @@ const SCHEMA = `
     conversation_id TEXT NOT NULL,
     role            TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system', 'tool')),
     content         TEXT NOT NULL,
+    metadata        TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages (conversation_id, id);
@@ -36,9 +37,18 @@ export class DatabaseConnection {
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 5000');
       db.exec(SCHEMA);
+      DatabaseConnection.addMissingColumns(db);
       DatabaseConnection.instance = db;
     }
     return DatabaseConnection.instance;
+  }
+
+  /** Bancos criados antes da coluna `metadata` ganham a coluna sem perder dados. */
+  private static addMissingColumns(db: Database.Database): void {
+    const columns = db.pragma('table_info(messages)') as Array<{ name: string }>;
+    if (!columns.some((column) => column.name === 'metadata')) {
+      db.exec('ALTER TABLE messages ADD COLUMN metadata TEXT');
+    }
   }
 
   static close(): void {

@@ -1,9 +1,14 @@
 import { ChatMessage, Role } from '../llm/types.js';
 import { Logger } from '../utils/Logger.js';
 import { Conversation, ConversationRepository } from './ConversationRepository.js';
-import { MessageRepository } from './MessageRepository.js';
+import { MessageMetadata, MessageRepository } from './MessageRepository.js';
 
 const MAX_MESSAGE_CHARS = 100_000;
+/**
+ * Só user/assistant voltam ao LLM: observações de tool ficam no histórico, mas sem
+ * a mensagem de tool_calls correspondente seriam rejeitadas pela API.
+ */
+const CONTEXT_ROLES: Role[] = ['user', 'assistant'];
 const logger = new Logger('MemoryManager');
 
 /**
@@ -18,10 +23,10 @@ export class MemoryManager {
     private readonly providerName: string,
   ) {}
 
-  addMessage(userId: string, role: Role, content: string): void {
+  addMessage(userId: string, role: Role, content: string, metadata?: MessageMetadata): void {
     try {
       const conversation = this.getOrCreateConversation(userId);
-      this.messages.add(conversation.id, role, MemoryManager.sanitize(content));
+      this.messages.add(conversation.id, role, MemoryManager.sanitize(content), metadata);
       this.conversations.touch(conversation.id);
     } catch (error) {
       // EC-02 (PRD): banco ocupado/bloqueado não derruba o pipeline.
@@ -31,7 +36,7 @@ export class MemoryManager {
 
   getContextWindow(userId: string): ChatMessage[] {
     const conversation = this.getOrCreateConversation(userId);
-    const recent = this.messages.findRecent(conversation.id, this.windowSize);
+    const recent = this.messages.findRecent(conversation.id, this.windowSize, CONTEXT_ROLES);
 
     // A janela deve começar por uma mensagem do usuário.
     const firstUser = recent.findIndex((message) => message.role === 'user');

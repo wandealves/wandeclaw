@@ -5,6 +5,7 @@ export interface PromptContext {
   availableSkills: SkillMetadata[];
   skill: ActiveSkill | null;
   toolNames: string[];
+  audioReply?: boolean;
 }
 
 /**
@@ -36,6 +37,17 @@ export class SystemPromptBuilder {
       ].join('\n'),
       this.skillsSection(context.availableSkills),
     ];
+
+    if (context.audioReply) {
+      sections.push(
+        [
+          '## Resposta em áudio',
+          'Sua resposta final será convertida em mensagem de voz. Escreva como fala: texto corrido, curto e natural,',
+          'sem Markdown, listas, tabelas, emojis, links ou blocos de código.',
+          'Só use o bloco <arquivo> se o usuário pedir explicitamente um documento.',
+        ].join('\n'),
+      );
+    }
 
     if (context.skill) {
       sections.push(

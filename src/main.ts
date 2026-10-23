@@ -5,17 +5,24 @@ import { AgentLoop } from './agent/AgentLoop.js';
 import { SystemPromptBuilder } from './agent/SystemPromptBuilder.js';
 import { Config } from './config/Config.js';
 import { ProviderFactory } from './llm/ProviderFactory.js';
+import { AudioConverter } from './media/AudioConverter.js';
+import { DocumentExtractor } from './media/DocumentExtractor.js';
+import { SpeechToTextFactory } from './media/SpeechToText.js';
+import { TextToSpeechFactory } from './media/TextToSpeech.js';
 import { ConversationRepository } from './memory/ConversationRepository.js';
 import { DatabaseConnection } from './memory/DatabaseConnection.js';
+import { DatabaseMaintenance } from './memory/DatabaseMaintenance.js';
 import { MemoryManager } from './memory/MemoryManager.js';
 import { MessageRepository } from './memory/MessageRepository.js';
 import { SkillExecutor } from './skills/SkillExecutor.js';
 import { SkillLoader } from './skills/SkillLoader.js';
 import { SkillRouter } from './skills/SkillRouter.js';
+import { TelegramFileDownloader } from './telegram/TelegramFileDownloader.js';
 import { TelegramInputHandler } from './telegram/TelegramInputHandler.js';
 import { TelegramOutputHandler } from './telegram/TelegramOutputHandler.js';
 import { ToolFactory } from './tools/ToolFactory.js';
 import { Logger } from './utils/Logger.js';
+import { TempFiles } from './utils/TempFiles.js';
 
 const logger = new Logger('Main');
 
@@ -29,7 +36,11 @@ async function main(): Promise<void> {
     : llm;
   logger.info(`LLM: ${llm.name} | Router: ${routerLlm.name}`);
 
+  const tmp = new TempFiles(config.tmpDir);
+  tmp.purgeLeftovers();
+
   const db = DatabaseConnection.getInstance(config.dbPath);
+  new DatabaseMaintenance(db, config.dbBackupDir, config.dbBackupKeep).schedule();
   const memory = new MemoryManager(
     new ConversationRepository(db),
     new MessageRepository(db),
@@ -44,11 +55,21 @@ async function main(): Promise<void> {
     new SkillLoader(config.skillsDir),
     new SkillRouter(routerLlm),
     new SkillExecutor(agentLoop),
+    config.ttsVoice,
   );
+  const converter = new AudioConverter(config.ffmpegPath);
+  logger.info(`STT: whisper (${config.whisperBackend}) | TTS: edge-tts ${config.ttsBackend} (${config.ttsVoice})`);
 
   const bot = new Bot(config.telegramBotToken);
   bot.api.config.use(autoRetry());
-  new TelegramInputHandler(bot, config.allowedUserIds, controller, new TelegramOutputHandler(config.tmpDir)).register();
+  const output = new TelegramOutputHandler(tmp, TextToSpeechFactory.create(config, tmp), converter);
+  new TelegramInputHandler(bot, config.allowedUserIds, controller, output, {
+    downloader: new TelegramFileDownloader(bot.api, config.telegramBotToken, tmp),
+    documents: new DocumentExtractor(config.maxDocumentBytes),
+    speechToText: SpeechToTextFactory.create(config, tmp, converter),
+    tmp,
+    maxDocumentBytes: config.maxDocumentBytes,
+  }).register();
   bot.catch((err) => logger.error(`Erro no update ${err.ctx.update.update_id}`, err.error));
 
   const shutdown = async (signal: string) => {

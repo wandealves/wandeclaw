@@ -19,8 +19,10 @@
     "@grammyjs/auto-retry": "^2.0.2",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^18.0.8",
+    "edge-tts-universal": "^1.4.0",
     "grammy": "^1.46.0",
-    "js-yaml": "^5.5.0"
+    "js-yaml": "^5.5.0",
+    "pdf-parse": "^2.4.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",

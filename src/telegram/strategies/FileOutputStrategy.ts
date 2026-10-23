@@ -39,7 +39,10 @@ export class FileOutputStrategy implements OutputStrategy {
   async send(ctx: Context, content: string): Promise<void> {
     const { files, remainder } = FileOutputStrategy.extract(content);
     if (remainder) await this.text.send(ctx, remainder);
+    await this.sendFiles(ctx, files);
+  }
 
+  async sendFiles(ctx: Context, files: ExtractedFile[]): Promise<void> {
     for (const file of files) {
       await this.sendFile(ctx, file);
     }

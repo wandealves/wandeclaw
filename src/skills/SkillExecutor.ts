@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { AgentLoop } from '../agent/AgentLoop.js';
+import { AgentLoop, ToolObservation } from '../agent/AgentLoop.js';
 import { ChatMessage } from '../llm/types.js';
 import { Logger } from '../utils/Logger.js';
 import { SkillLoader, SkillMetadata } from './SkillLoader.js';
@@ -13,6 +13,8 @@ export interface SkillExecutionInput {
   history: ChatMessage[];
   availableSkills: SkillMetadata[];
   skillName: string | null;
+  audioReply?: boolean;
+  onObservation?: (observation: ToolObservation) => void;
 }
 
 const logger = new Logger('SkillExecutor');
@@ -30,6 +32,8 @@ export class SkillExecutor {
       history: input.history,
       availableSkills: input.availableSkills,
       skill,
+      audioReply: input.audioReply,
+      onObservation: input.onObservation,
     });
   }
 

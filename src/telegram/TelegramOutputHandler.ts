@@ -1,6 +1,10 @@
 import { GrammyError, type Context } from 'grammy';
 import type { AgentReply } from '../agent/AgentController.js';
 import { Logger } from '../utils/Logger.js';
+import { AudioConverter } from '../media/AudioConverter.js';
+import { ITextToSpeech } from '../media/TextToSpeech.js';
+import { TempFiles } from '../utils/TempFiles.js';
+import { AudioOutputStrategy } from './strategies/AudioOutputStrategy.js';
 import { ErrorOutputStrategy } from './strategies/ErrorOutputStrategy.js';
 import { FileOutputStrategy } from './strategies/FileOutputStrategy.js';
 import { OutputStrategy } from './strategies/OutputStrategy.js';
@@ -16,9 +20,11 @@ export class TelegramOutputHandler {
   private readonly text = new TextOutputStrategy();
   private readonly file: FileOutputStrategy;
   private readonly error = new ErrorOutputStrategy();
+  private readonly audio: AudioOutputStrategy;
 
-  constructor(tmpDir: string) {
-    this.file = new FileOutputStrategy(tmpDir, this.text);
+  constructor(tmp: TempFiles, tts: ITextToSpeech, converter: AudioConverter) {
+    this.file = new FileOutputStrategy(tmp.dir, this.text);
+    this.audio = new AudioOutputStrategy(tts, converter, tmp, this.text, this.file);
   }
 
   async send(ctx: Context, reply: AgentReply): Promise<void> {
@@ -35,6 +41,7 @@ export class TelegramOutputHandler {
 
   private selectStrategy(reply: AgentReply): OutputStrategy {
     if (reply.isError) return this.error;
+    if (reply.isAudio) return this.audio;
     if (FileOutputStrategy.hasFiles(reply.text)) return this.file;
     return this.text;
   }

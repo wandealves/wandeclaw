@@ -29,3 +29,14 @@ test('/novo inicia conversa vazia sem apagar o histórico', () => {
   const total = db.prepare('SELECT COUNT(*) AS n FROM messages').get() as { n: number };
   assert.ok(total.n >= 6);
 });
+
+test('observações de tool são persistidas mas ficam fora da janela de contexto', () => {
+  memory.addMessage('99', 'user', 'que horas são?', { requires_audio_reply: true, voice_id: 'pt-BR-ThalitaMultilingualNeural' });
+  memory.addMessage('99', 'tool', '{"iso":"..."}', { tool_call_id: 'c1', name: 'get_current_datetime' });
+  memory.addMessage('99', 'assistant', 'São 10h.');
+
+  assert.deepEqual(memory.getContextWindow('99').map((message) => message.role), ['user', 'assistant']);
+  const rows = db.prepare("SELECT role, metadata FROM messages WHERE role IN ('tool', 'user') AND content LIKE '%' ORDER BY id DESC LIMIT 2").all() as Array<{ role: string; metadata: string }>;
+  assert.equal(JSON.parse(rows[0].metadata).name, 'get_current_datetime');
+  assert.equal(JSON.parse(rows[1].metadata).requires_audio_reply, true);
+});

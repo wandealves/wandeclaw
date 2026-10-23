@@ -40,6 +40,15 @@ test('executa a tool e devolve a observação ao LLM antes da resposta final', a
   assert.ok(toolMessage?.content?.includes('iso'));
 });
 
+test('notifica cada observação de tool e avisa o LLM quando a resposta será falada', async () => {
+  const provider = new ScriptedProvider([toolCall('get_current_datetime', '{}'), { content: 'São 10h.', toolCalls: [] }]);
+  const observations: string[] = [];
+  await makeLoop(provider).run({ ...input, audioReply: true, onObservation: (o) => observations.push(o.name) });
+
+  assert.deepEqual(observations, ['get_current_datetime']);
+  assert.match(provider.calls[0][0].content!, /Resposta em áudio/);
+});
+
 test('JSON malformado vira observação pedindo correção', async () => {
   const provider = new ScriptedProvider([toolCall('get_current_datetime', '{quebrado'), { content: 'ok', toolCalls: [] }]);
   await makeLoop(provider).run(input);

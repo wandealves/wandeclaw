@@ -6,10 +6,21 @@ import { ToolRegistry } from '../tools/ToolRegistry.js';
 import { Logger, errorMessage, preview } from '../utils/Logger.js';
 import { SystemPromptBuilder } from './SystemPromptBuilder.js';
 
+export interface ToolObservation {
+  toolCallId: string;
+  name: string;
+  arguments: string;
+  output: string;
+}
+
 export interface AgentRunInput {
   history: ChatMessage[];
   availableSkills: SkillMetadata[];
   skill?: ActiveSkill | null;
+  /** A resposta será convertida em voz (TTS). */
+  audioReply?: boolean;
+  /** Chamado a cada observação de tool (ex.: para persistir na memória). */
+  onObservation?: (observation: ToolObservation) => void;
 }
 
 export class MaxIterationsError extends Error {
@@ -41,6 +52,7 @@ export class AgentLoop {
           availableSkills: input.availableSkills,
           skill: input.skill ?? null,
           toolNames: this.registry.names(),
+          audioReply: input.audioReply ?? false,
         }),
       },
       ...input.history,
@@ -70,6 +82,12 @@ export class AgentLoop {
         const observation = await this.executeToolCall(call);
         logger.info(`👁️  Observation: ${preview(observation)}`);
         messages.push({ role: 'tool', tool_call_id: call.id, content: observation });
+        input.onObservation?.({
+          toolCallId: call.id,
+          name: call.function.name,
+          arguments: call.function.arguments,
+          output: observation,
+        });
       }
     }
 

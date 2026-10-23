@@ -9,6 +9,13 @@ import { MaxIterationsError } from './AgentLoop.js';
 export interface AgentReply {
   text: string;
   isError: boolean;
+  /** Enviar como mensagem de voz (TTS). */
+  isAudio: boolean;
+}
+
+export interface MessageOptions {
+  /** Entrada veio de voz ou o usuário pediu resposta falada (RF-06). */
+  requiresAudioReply?: boolean;
 }
 
 const logger = new Logger('AgentController');
@@ -22,10 +29,17 @@ export class AgentController {
     private readonly skillLoader: SkillLoader,
     private readonly skillRouter: SkillRouter,
     private readonly skillExecutor: SkillExecutor,
+    private readonly voiceId: string,
   ) {}
 
-  async handleMessage(userId: string, text: string): Promise<AgentReply> {
-    this.memory.addMessage(userId, 'user', text);
+  async handleMessage(userId: string, text: string, options: MessageOptions = {}): Promise<AgentReply> {
+    const audioReply = options.requiresAudioReply ?? false;
+    this.memory.addMessage(
+      userId,
+      'user',
+      text,
+      audioReply ? { requires_audio_reply: true, voice_id: this.voiceId } : undefined,
+    );
 
     try {
       const skills = this.skillLoader.loadAll();
@@ -36,11 +50,14 @@ export class AgentController {
         history: this.memory.getContextWindow(userId),
         availableSkills: skills,
         skillName,
+        audioReply,
+        onObservation: ({ toolCallId, name, arguments: args, output }) =>
+          this.memory.addMessage(userId, 'tool', output, { tool_call_id: toolCallId, name, arguments: args }),
       });
       this.memory.addMessage(userId, 'assistant', answer);
-      return { text: answer, isError: false };
+      return { text: answer, isError: false, isAudio: audioReply };
     } catch (error) {
-      return { text: this.describeFailure(error), isError: true };
+      return { text: this.describeFailure(error), isError: true, isAudio: false };
     }
   }
 
