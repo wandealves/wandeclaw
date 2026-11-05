@@ -1,9 +1,11 @@
 import { GrammyError, type Context } from 'grammy';
 import type { AgentReply } from '../agent/AgentController.js';
+import { LinkedInDrafts } from '../linkedin/LinkedInDrafts.js';
 import { Logger } from '../utils/Logger.js';
 import { AudioConverter } from '../media/AudioConverter.js';
 import { ITextToSpeech } from '../media/TextToSpeech.js';
 import { TempFiles } from '../utils/TempFiles.js';
+import type { LinkedInDraftHandler } from './LinkedInDraftHandler.js';
 import { AudioOutputStrategy } from './strategies/AudioOutputStrategy.js';
 import { ErrorOutputStrategy } from './strategies/ErrorOutputStrategy.js';
 import { FileOutputStrategy } from './strategies/FileOutputStrategy.js';
@@ -22,14 +24,22 @@ export class TelegramOutputHandler {
   private readonly error = new ErrorOutputStrategy();
   private readonly audio: AudioOutputStrategy;
 
-  constructor(tmp: TempFiles, tts: ITextToSpeech, converter: AudioConverter) {
+  constructor(
+    tmp: TempFiles,
+    tts: ITextToSpeech,
+    converter: AudioConverter,
+    private readonly linkedIn: LinkedInDraftHandler,
+  ) {
     this.file = new FileOutputStrategy(tmp.dir, this.text);
     this.audio = new AudioOutputStrategy(tts, converter, tmp, this.text, this.file);
   }
 
   async send(ctx: Context, reply: AgentReply): Promise<void> {
     try {
-      await this.selectStrategy(reply).send(ctx, reply.text);
+      // Rascunhos saem em mensagem própria, com botões, mesmo quando a resposta é em voz.
+      const { drafts, remainder } = reply.isError ? { drafts: [], remainder: reply.text } : LinkedInDrafts.extract(reply.text);
+      if (remainder) await this.selectStrategy({ ...reply, text: remainder }).send(ctx, remainder);
+      if (drafts.length > 0) await this.linkedIn.send(ctx, drafts);
     } catch (error) {
       if (error instanceof GrammyError && error.error_code === 403) {
         logger.warn('Msg abandonada, User bot-blocked.');

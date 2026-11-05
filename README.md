@@ -139,6 +139,31 @@ As skills são relidas a cada mensagem, então criar ou editar uma não exige re
 
 Quando o LLM responde com `<arquivo nome="x.md">...</arquivo>`, o conteúdo é enviado como documento no Telegram.
 
+## Publicar no LinkedIn
+
+A skill `post-linkedin` escreve o rascunho e o bot o mostra com os botões **Publicar** e **Cancelar**. A publicação é
+feita pelo próprio bot, sem passar pelo LLM, e nada sai sem o clique. Sem as variáveis abaixo, o rascunho aparece sem
+botões. Esta versão publica texto, hashtags e links no corpo do post.
+
+1. Crie um app em [linkedin.com/developers](https://www.linkedin.com/developers/apps) e adicione os produtos
+   *Share on LinkedIn* e *Sign In with LinkedIn using OpenID Connect*.
+2. No [Token Generator](https://www.linkedin.com/developers/tools/oauth/token-generator), gere um token com
+   `w_member_social`, `openid` e `profile`.
+3. Descubra seu identificador e copie o campo `sub`:
+
+   ```bash
+   curl -H "Authorization: Bearer SEU_TOKEN" https://api.linkedin.com/v2/userinfo
+   ```
+
+4. Preencha o `.env` e reinicie o bot:
+
+   ```bash
+   LINKEDIN_ACCESS_TOKEN=SEU_TOKEN
+   LINKEDIN_PERSON_URN=urn:li:person:SEU_SUB
+   ```
+
+O token vence em 60 dias: gere outro, atualize o `.env` e reinicie. O `/status` mostra se o LinkedIn está configurado.
+
 ## Testes
 
 ```bash

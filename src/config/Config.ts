@@ -42,6 +42,7 @@ export class Config {
   readonly ttsCommand: string;
   readonly ttsVoice: string;
   readonly ttsTimeoutMs: number;
+  readonly linkedIn: { accessToken?: string; personUrn?: string; apiVersion: string };
 
   private constructor(private readonly env: NodeJS.ProcessEnv) {
     this.telegramBotToken = this.required('TELEGRAM_BOT_TOKEN');
@@ -88,6 +89,11 @@ export class Config {
     this.ttsCommand = env.TTS_COMMAND?.trim() || 'edge-tts';
     this.ttsVoice = env.TTS_VOICE?.trim() || 'pt-BR-ThalitaMultilingualNeural';
     this.ttsTimeoutMs = Config.positiveInt(env.TTS_TIMEOUT_MS, 60_000);
+    this.linkedIn = {
+      accessToken: this.value('LINKEDIN_ACCESS_TOKEN'),
+      personUrn: this.value('LINKEDIN_PERSON_URN'),
+      apiVersion: this.value('LINKEDIN_API_VERSION') ?? '202610',
+    };
   }
 
   static get(): Config {

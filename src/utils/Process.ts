@@ -23,6 +23,13 @@ export class ProcessError extends Error {
   }
 }
 
+/** Publicar no LinkedIn é só do bot: agentes CLI e outros binários não recebem o token. */
+function childEnv(extra: NodeJS.ProcessEnv | undefined): NodeJS.ProcessEnv {
+  const env = { ...process.env, ...extra };
+  delete env.LINKEDIN_ACCESS_TOKEN;
+  return env;
+}
+
 /**
  * Executa um binário externo (sem shell) com timeout; o processo é morto se estourar.
  */
@@ -41,7 +48,7 @@ export function runProcess(
         maxBuffer: 16 * 1024 * 1024,
         windowsHide: true,
         cwd: options.cwd,
-        env: options.env ? { ...process.env, ...options.env } : undefined,
+        env: childEnv(options.env),
       },
       (error, stdout, stderr) => {
         if (!error) return resolve({ stdout, stderr });

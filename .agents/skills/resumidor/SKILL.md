@@ -1,6 +1,6 @@
 ---
 name: resumidor
-description: Resume textos longos, artigos ou conversas em pontos-chave objetivos.
+description: Resume textos longos, notícias ou conversas em pontos-chave objetivos.
 ---
 
 # Resumidor

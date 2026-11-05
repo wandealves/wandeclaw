@@ -7,6 +7,8 @@ import { Config } from './config/Config.js';
 import { DependencyChecker } from './diagnostics/DependencyChecker.js';
 import { ProviderFactory } from './llm/ProviderFactory.js';
 import { AudioConverter } from './media/AudioConverter.js';
+import { LinkedInClient } from './linkedin/LinkedInClient.js';
+import { LinkedInDrafts } from './linkedin/LinkedInDrafts.js';
 import { DocumentExtractor } from './media/DocumentExtractor.js';
 import { SpeechToTextFactory } from './media/SpeechToText.js';
 import { TextToSpeechFactory } from './media/TextToSpeech.js';
@@ -21,6 +23,7 @@ import { SkillRouter } from './skills/SkillRouter.js';
 import { TelegramFileDownloader } from './telegram/TelegramFileDownloader.js';
 import { TelegramInputHandler } from './telegram/TelegramInputHandler.js';
 import { TelegramOutputHandler } from './telegram/TelegramOutputHandler.js';
+import { LinkedInDraftHandler } from './telegram/LinkedInDraftHandler.js';
 import { ToolFactory } from './tools/ToolFactory.js';
 import { Logger } from './utils/Logger.js';
 import { TempFiles } from './utils/TempFiles.js';
@@ -81,13 +84,17 @@ async function main(): Promise<void> {
 
   const bot = new Bot(config.telegramBotToken);
   bot.api.config.use(autoRetry());
-  const output = new TelegramOutputHandler(tmp, TextToSpeechFactory.create(config, tmp), converter);
+  const { accessToken, personUrn, apiVersion } = config.linkedIn;
+  const linkedInClient = accessToken && personUrn ? new LinkedInClient({ accessToken, personUrn, apiVersion }) : null;
+  const linkedIn = new LinkedInDraftHandler(new LinkedInDrafts(), linkedInClient);
+  const output = new TelegramOutputHandler(tmp, TextToSpeechFactory.create(config, tmp), converter, linkedIn);
   const statusReport = async () =>
     [
       `🤖 ${config.agentName}`,
       `LLM: ${llm.name}`,
       `Router: ${routerLlm.name}`,
       `Skills: ${skillLoader.loadAll().length} instalada(s)`,
+      `LinkedIn: ${linkedInClient ? 'configurado' : 'não configurado'}`,
       '',
       'Dependências:',
       DependencyChecker.format(await dependencies.check()),
@@ -100,6 +107,7 @@ async function main(): Promise<void> {
     maxDocumentBytes: config.maxDocumentBytes,
   };
   new TelegramInputHandler(bot, config.allowedUserIds, controller, output, media, statusReport).register();
+  linkedIn.register(bot);
   bot.catch((err) => logger.error(`Erro no update ${err.ctx.update.update_id}`, err.error));
 
   const shutdown = async (signal: string) => {
