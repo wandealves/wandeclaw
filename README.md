@@ -1,149 +1,171 @@
 # WandeClaw
 
-Agente pessoal de IA que roda localmente e é controlado pelo Telegram. Implementação das specs do
-[SandeClaw](https://github.com/sandeco/prompts/tree/main/SandeClaw/specs) (cópia local em `specs/`).
+Agente pessoal de IA que roda no seu computador e é controlado pelo Telegram. Você conversa por texto, voz ou
+documentos, e ele responde usando o modelo de linguagem que você escolher. Suas conversas ficam em um banco SQLite
+local.
 
-## Como rodar
+É uma implementação das specs do [SandeClaw](https://github.com/sandeco/prompts/tree/main/SandeClaw/specs), com cópia
+local em `specs/`.
+
+## O que ele faz
+
+- **Conversa com memória:** guarda o histórico em SQLite e usa as mensagens recentes como contexto.
+- **Entende texto, voz, PDF e `.md`:** áudios são transcritos localmente com o Whisper.
+- **Responde em voz:** devolve mensagens de voz quando você manda áudio ou pede resposta falada.
+- **Usa skills:** escolhe sozinho a skill certa para revisar textos, traduzir, estudar, escrever specs e mais.
+- **Entrega arquivos:** gera documentos e os envia no Telegram.
+- **Publica no LinkedIn:** escreve o rascunho e publica no seu perfil depois do seu clique.
+- **Aceita vários provedores de LLM:** Gemini, DeepSeek, Groq, Claude Code ou OpenCode, com fallback entre eles.
+- **Só atende você:** quem não está na whitelist é ignorado.
+
+## Como começar
+
+### 1. Pré-requisitos
+
+- Node.js 20 ou superior.
+- Um bot do Telegram, criado com o [@BotFather](https://t.me/BotFather).
+- Seu ID numérico do Telegram, que o [@userinfobot](https://t.me/userinfobot) informa.
+- Um provedor de LLM: uma API key **ou** o Claude Code ou OpenCode instalado e autenticado.
+
+### 2. Instalação
 
 ```bash
 npm install
-cp .env.example .env   # preencha TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS e ao menos uma API key
-npm run dev
+cp .env.example .env
 ```
 
-- Token do bot: crie com o [@BotFather](https://t.me/BotFather).
-- Seu user ID: pergunte ao [@userinfobot](https://t.me/userinfobot).
-- Provedor de LLM: escolha em `LLM_PROVIDER`. Pode ser um modelo via API key **ou** um agente de linha de comando
-  (Claude Code, OpenCode). Veja [Provedores de LLM](#provedores-de-llm).
+### 3. Configuração mínima
 
-### Voz e documentos (opcional)
-
-Texto, PDF e `.md` funcionam sem nada extra. Para voz, instale no host:
+Preencha no `.env` os dados do Telegram e um provedor. Exemplo com API key:
 
 ```bash
-# ffmpeg: necessário para Whisper e para gerar a Voice Note (OGG/Opus)
+TELEGRAM_BOT_TOKEN=123456:ABC-seu-token
+TELEGRAM_ALLOWED_USER_IDS=123456789
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=sua-chave
+```
+
+Veja as outras opções em [Provedores de LLM](#provedores-de-llm) e a lista completa de variáveis no `.env.example`.
+
+### 4. Execução
+
+Rode os comandos sempre da raiz do projeto, porque os caminhos do `.env` são relativos à pasta atual.
+
+```bash
+# Desenvolvimento: reinicia ao alterar arquivos em src/
+npm run dev
+
+# Produção
+npm run build
+npm start
+```
+
+Quando o bot subir, o log mostra `🤖 @seu_bot online`. Mande `/status` no Telegram para conferir o provedor e as
+dependências.
+
+### 5. Voz (opcional)
+
+Texto, PDF e `.md` funcionam sem nada extra. Para usar voz, instale no computador:
+
+```bash
 sudo apt install ffmpeg          # Windows: winget install ffmpeg
 pip install openai-whisper edge-tts
 ```
 
-- **STT:** `WHISPER_BACKEND=openai` usa o CLI `whisper`; `WHISPER_BACKEND=cpp` usa o `whisper-cli` do whisper.cpp
-  (nesse caso `WHISPER_MODEL` é o caminho do modelo `.bin`).
-- **TTS:** `TTS_BACKEND=cli` (padrão) usa o CLI `edge-tts`. O backend `npm` (`edge-tts-universal`) está disponível, mas a
-  v1.4.0 recebe 403 do serviço da Microsoft desde a mudança do token de autenticação.
-- Sem Whisper o bot avisa "Não consegui inicializar o Whisper local agora."; se o TTS falhar, a resposta vai em texto.
+| Recurso | Configuração |
+|---------|--------------|
+| Transcrição | `WHISPER_BACKEND=openai` usa o CLI `whisper`. `WHISPER_BACKEND=cpp` usa o `whisper-cli` do whisper.cpp, e `WHISPER_MODEL` passa a ser o caminho do modelo `.bin`. |
+| Síntese de voz | `TTS_BACKEND=cli` (padrão) usa o CLI `edge-tts`. O backend `npm` existe, mas a v1.4.0 recebe 403 do serviço da Microsoft. |
 
-Comandos no chat: `/start`, `/novo` (nova conversa), `/skills` (lista as skills) e `/status` (provedores e dependências).
+Sem o Whisper, o bot avisa que não conseguiu inicializá-lo. Se a síntese de voz falhar, a resposta vem em texto.
 
-Na inicialização o agente verifica os binários que a configuração usa (CLIs de LLM, Whisper, edge-tts, ffmpeg) e
-loga ✅/⚠️ com a dica de instalação. O mesmo relatório aparece no `/status`.
+## Como usar
 
-## Provedores de LLM
+Converse com o bot no Telegram como em qualquer chat. Não é preciso escolher uma skill: ela é selecionada pelo conteúdo
+da mensagem.
 
-Além de modelos via API key, o agente pode usar **agentes de linha de comando** como cérebro. Eles usam o login da
-própria CLI, sem API key no `.env`.
+### Comandos
 
-| `LLM_PROVIDER` | Tipo | Autenticação | Ferramentas |
-|----------------|------|--------------|-------------|
-| `gemini` | API | `GEMINI_API_KEY` | do agente (`src/tools`) |
-| `deepseek` | API | `DEEPSEEK_API_KEY` | do agente (`src/tools`) |
-| `groq` | API | `GROQ_API_KEY` | do agente (`src/tools`) |
-| `claude-code` | CLI (`claude -p`) | login do Claude Code (assinatura Claude ou a key configurada nele) | nativas do Claude Code |
-| `opencode` | CLI (`opencode run`) | `opencode auth login` (qualquer provedor, inclusive modelos gratuitos) | nativas do OpenCode |
+| Comando | O que faz |
+|---------|-----------|
+| `/start` | Mostra a mensagem de boas-vindas |
+| `/novo` | Inicia uma nova conversa; o histórico anterior fica salvo, mas sai do contexto |
+| `/skills` | Lista as skills instaladas |
+| `/status` | Mostra provedores, skills, LinkedIn e dependências |
 
-### Claude Code
-
-```bash
-# instale em https://claude.com/claude-code e rode "claude" uma vez para fazer login
-LLM_PROVIDER=claude-code
-CLAUDE_CODE_MODEL=sonnet                 # opcional: sonnet | opus | haiku | id completo
-```
-
-### OpenCode
-
-```bash
-# instale em https://opencode.ai, depois: opencode auth login  (e "opencode models" para listar)
-LLM_PROVIDER=opencode
-OPENCODE_MODEL=opencode/deepseek-v4.1-flash-free   # formato provider/model
-```
-
-### Como funciona
-
-- A CLI roda em modo headless com o diretório de trabalho em `WORKSPACE_DIR`. Ela executa o próprio loop de
-  ferramentas e devolve só a resposta final (timeout em `CLI_TIMEOUT_MS`, padrão 5 min).
-- O histórico da conversa (memória SQLite), as skills e o system prompt do agente vão junto em cada chamada.
-- O `SkillRouter` chama a CLI **sem ferramentas** (Claude Code com `--tools ""`, OpenCode com o agente `plan`).
-  Para economizar, use um provedor via API como router: `ROUTER_PROVIDER=groq`.
-- Dá para misturar na cascata, por exemplo `LLM_PROVIDER=deepseek` com `LLM_FALLBACK_PROVIDERS=claude-code,groq`.
-  O agente avisa no log quando o fallback é vazio ou repete o provedor principal.
-
-### ⚠️ Segurança das ferramentas nativas
-
-Com um provedor CLI, mensagens do Telegram (apenas de quem está na whitelist) fazem a CLI **ler e editar arquivos
-no `WORKSPACE_DIR`**. Por padrão, **executar comandos (Bash) fica bloqueado**:
-
-- **Claude Code:** só as ferramentas de `CLAUDE_CODE_ALLOWED_TOOLS` ficam disponíveis (padrão
-  `Read,Edit,Write,Glob,Grep,WebSearch,WebFetch`). Com `CLAUDE_CODE_PERMISSION_MODE=dontAsk`, o resto é negado sem
-  perguntar. Servidores MCP do seu Claude Code não são carregados (`--strict-mcp-config`).
-- **OpenCode:** as permissões de `OPENCODE_PERMISSIONS` (padrão `bash=deny,external_directory=deny`) são injetadas
-  via `OPENCODE_CONFIG_CONTENT`. `OPENCODE_AUTO_APPROVE=true` aprova automaticamente o que não estiver negado.
-
-Só adicione `Bash` (ou `bash=allow`) se aceitar que comandos vindos do Telegram rodem no seu computador.
-
-## Entradas e saídas
+### O que você pode enviar
 
 | Entrada | Tratamento |
 |---------|------------|
-| Texto | Vai direto ao agente. "me responde em áudio" / "fale comigo" pede resposta em voz. |
-| PDF / `.md` (até `MAX_DOCUMENT_MB`) | Texto extraído (pdf-parse) e enviado junto com a legenda. Outros formatos recebem aviso. |
-| Voz / áudio | Transcrito pelo Whisper local; a resposta volta como Voice Note (Edge-TTS, `pt-BR-ThalitaMultilingualNeural`). |
+| Texto | Vai direto ao agente. Frases como "me responde em áudio" ou "fale comigo" pedem resposta em voz. |
+| PDF ou `.md` | O texto é extraído e enviado ao agente com a legenda, até `MAX_DOCUMENT_MB`. Outros formatos recebem um aviso. |
+| Voz ou áudio | É transcrito localmente, e a resposta volta como mensagem de voz, salvo se a legenda recusar o áudio. |
 
-Arquivos baixados e gerados ficam em `./tmp` só durante o processamento. Na inicialização, sobras de execuções
-interrompidas são removidas.
+Arquivos baixados ou gerados ficam em `./tmp` só durante o processamento.
 
-## Arquitetura
+### Exemplos
 
+```text
+corrige esse parágrafo: nós vai no mercado
+traduz pro inglês: bom dia, equipe
+escreve um e-mail para o meu chefe pedindo folga na sexta
+me explica o que é recursão
+cria flashcards sobre fotossíntese
+escreve um post para o linkedin sobre o que aprendi na pós
 ```
-Telegram ─► TelegramInputHandler (whitelist) ─► AgentController (Facade)
-                                                  ├─ MemoryManager ─► Conversation/MessageRepository ─► SQLite (WAL)
-                                                  ├─ SkillLoader ─► SkillRouter (passo zero) ─► SkillExecutor
-                                                  └─► AgentLoop (ReAct) ◄─► ToolRegistry / ProviderFactory
-                                                          └─► TelegramOutputHandler (Text | File | Audio | Error)
-```
 
-| Pasta | Conteúdo |
-|-------|----------|
-| `src/agent` | `AgentController`, `AgentLoop` (ReAct, limite `MAX_ITERATIONS`), `SystemPromptBuilder` |
-| `src/llm` | `ProviderFactory`, `FallbackProvider`, provedores compatíveis com a API OpenAI e provedores CLI (`src/llm/cli`) |
-| `src/diagnostics` | `DependencyChecker` (checagem de binários no startup e no `/status`) |
-| `src/skills` | Loader (hot-reload), Router e Executor |
-| `src/tools` | `BaseTool`, `ToolRegistry`, `ToolFactory` e tools (data/hora, ler/escrever/listar arquivos no `workspace/`) |
-| `src/memory` | Singleton do SQLite, repositórios, `MemoryManager` (janela `MEMORY_WINDOW_SIZE`) e backups/VACUUM diários |
-| `src/media` | Extração de PDF/MD, STT (Whisper), TTS (Edge-TTS) e conversões de áudio (ffmpeg) |
-| `src/telegram` | Input/Output handlers, downloader de anexos e estratégias de saída |
+Você também pode enviar um PDF com a legenda "faz o fichamento desse artigo".
 
 ## Skills
 
-Cada skill é uma pasta em `.agents/skills/<nome>/SKILL.md` com frontmatter YAML:
+| Skill | Para que serve | Entrega |
+|-------|----------------|---------|
+| `resumidor` | Resumir textos longos, notícias ou conversas | Mensagem |
+| `revisor-texto` | Corrigir e melhorar um texto já escrito | Mensagem |
+| `tradutor` | Traduzir entre português, inglês e outros idiomas | Mensagem |
+| `redator-mensagens` | Escrever e-mails e mensagens profissionais do zero | Mensagem |
+| `post-linkedin` | Escrever e ajustar posts para o LinkedIn | Rascunho com botões |
+| `fichamento-academico` | Fichar artigos, teses e capítulos | Arquivo `.md` |
+| `flashcards-quiz` | Criar flashcards e quizzes com gabarito | Arquivo `.md` |
+| `tutor` | Ensinar um conceito passo a passo | Mensagem |
+| `prd-manager` | Criar ou revisar PRDs e specs | Arquivo `.md` |
+| `skill-creator` | Criar e melhorar skills | Varia |
+
+### Criar uma skill
+
+Crie `.agents/skills/<nome>/SKILL.md`:
 
 ```markdown
 ---
 name: minha-skill
-description: Quando usar esta skill (é o que o Router enxerga).
+description: "Quando usar esta skill. É o único texto que o roteador enxerga."
 ---
-Instruções detalhadas, injetadas no prompt só quando a skill é escolhida.
+
+Instruções injetadas no prompt quando a skill é escolhida.
 ```
 
-As skills são relidas a cada mensagem, então criar ou editar uma não exige reiniciar o bot.
+As skills são relidas a cada mensagem, então criar ou editar uma não exige reiniciar o bot. Confira com `/skills`.
 
-## Arquivos na resposta
+Alguns cuidados:
 
-Quando o LLM responde com `<arquivo nome="x.md">...</arquivo>`, o conteúdo é enviado como documento no Telegram.
+- **Use aspas na `description`.** Com YAML inválido, a skill é ignorada sem aviso no log.
+- **Coloque tudo no `SKILL.md`.** Só o corpo desse arquivo vai para o prompt; `scripts/` e `references/` não são lidos.
+- **Faça descrições específicas.** Cada mensagem aciona no máximo uma skill.
+- **Entregue tudo em uma resposta.** O roteador vê só a mensagem atual, então um "continua" pode não reativar a skill.
+- **Lembre que skill não executa nada sozinha.** Ela só adiciona instruções; o que o agente consegue fazer depende das
+  ferramentas do provedor.
+
+### Arquivos na resposta
+
+Quando a resposta contém `<arquivo nome="x.md">...</arquivo>`, o conteúdo é enviado como documento no Telegram.
 
 ## Publicar no LinkedIn
 
-A skill `post-linkedin` escreve o rascunho e o bot o mostra com os botões **Publicar** e **Cancelar**. A publicação é
-feita pelo próprio bot, sem passar pelo LLM, e nada sai sem o clique. Sem as variáveis abaixo, o rascunho aparece sem
-botões. Esta versão publica texto, hashtags e links no corpo do post.
+A skill `post-linkedin` escreve o rascunho, e o bot o mostra com os botões **Publicar** e **Cancelar**. A publicação é
+feita pelo próprio bot, sem passar pelo LLM, e nada sai sem o seu clique. O texto publicado é exatamente o que apareceu
+no Telegram, então revise-o antes de confirmar. Esta versão publica texto, hashtags e links no corpo do post.
+
+Para configurar:
 
 1. Crie um app em [linkedin.com/developers](https://www.linkedin.com/developers/apps) e adicione os produtos
    *Share on LinkedIn* e *Sign In with LinkedIn using OpenID Connect*.
@@ -162,11 +184,120 @@ botões. Esta versão publica texto, hashtags e links no corpo do post.
    LINKEDIN_PERSON_URN=urn:li:person:SEU_SUB
    ```
 
-O token vence em 60 dias: gere outro, atualize o `.env` e reinicie. O `/status` mostra se o LinkedIn está configurado.
+Sem essas variáveis, o rascunho aparece sem botões. Para manter a integração:
 
-## Testes
+- **Token:** vence em 60 dias. Gere outro, atualize o `.env` e reinicie o bot.
+- **Versão da API:** quando a versão em uso for desativada, atualize `LINKEDIN_API_VERSION`.
+- **Rascunhos:** valem por 24 horas e se perdem ao reiniciar o bot. Nada é publicado depois disso.
+- **Falhas:** se o LinkedIn não confirmar a publicação, confira seu perfil antes de tentar de novo.
+
+Publicar em página de empresa ainda não é suportado. Isso exige a Community Management API, que passa por aprovação do
+LinkedIn.
+
+## Provedores de LLM
+
+Além de modelos via API key, o agente pode usar **agentes de linha de comando**, que aproveitam o login da própria CLI.
+
+| `LLM_PROVIDER` | Tipo | Autenticação | Ferramentas |
+|----------------|------|--------------|-------------|
+| `gemini` | API | `GEMINI_API_KEY` | do agente (`src/tools`) |
+| `deepseek` | API | `DEEPSEEK_API_KEY` | do agente (`src/tools`) |
+| `groq` | API | `GROQ_API_KEY` | do agente (`src/tools`) |
+| `claude-code` | CLI (`claude -p`) | login do Claude Code | nativas do Claude Code |
+| `opencode` | CLI (`opencode run`) | `opencode auth login` | nativas do OpenCode |
+
+Exemplos:
 
 ```bash
-npm test
-npm run typecheck
+# Claude Code: instale em https://claude.com/claude-code e rode "claude" uma vez para fazer login
+LLM_PROVIDER=claude-code
+CLAUDE_CODE_MODEL=sonnet                           # opcional: sonnet | opus | haiku | id completo
+
+# OpenCode: instale em https://opencode.ai, depois rode "opencode auth login"
+LLM_PROVIDER=opencode
+OPENCODE_MODEL=opencode/deepseek-v4.1-flash-free   # formato provider/model; liste com "opencode models"
 ```
+
+### Fallback e roteador
+
+- `LLM_FALLBACK_PROVIDERS` define a cascata usada se o principal falhar. Exemplo: `LLM_PROVIDER=deepseek` com
+  `LLM_FALLBACK_PROVIDERS=claude-code,groq`. Use um provedor diferente do principal.
+- `ROUTER_PROVIDER` define quem escolhe a skill. Com um provedor CLI, cada mensagem faz duas chamadas à CLI; para
+  economizar, use um provedor via API, como `ROUTER_PROVIDER=groq`.
+
+### Como os provedores CLI funcionam
+
+- A CLI roda sem interface, com `WORKSPACE_DIR` como diretório de trabalho e timeout em `CLI_TIMEOUT_MS` (padrão: 5 min).
+- Ela executa o próprio loop de ferramentas e devolve só a resposta final.
+- O histórico, as skills e o system prompt vão junto em cada chamada.
+- O roteador chama a CLI **sem ferramentas**: Claude Code com `--tools ""` e OpenCode com o agente `plan`.
+
+## Segurança
+
+- **Acesso:** só os IDs de `TELEGRAM_ALLOWED_USER_IDS` são atendidos, inclusive nos botões.
+- **Segredos:** nunca versione o `.env`. Ele já está no `.gitignore`.
+- **Ferramentas do agente:** nos provedores via API, os arquivos ficam restritos a `WORKSPACE_DIR`.
+- **Token do LinkedIn:** não é repassado aos processos filhos. As demais variáveis do `.env` são.
+
+### ⚠️ Provedores CLI
+
+Com um provedor CLI, mensagens de quem está na whitelist fazem a CLI **ler e editar arquivos no `WORKSPACE_DIR`**.
+Por padrão, **executar comandos fica bloqueado**:
+
+- **Claude Code:** só as ferramentas de `CLAUDE_CODE_ALLOWED_TOOLS` ficam disponíveis (padrão:
+  `Read,Edit,Write,Glob,Grep,WebSearch,WebFetch`). Com `CLAUDE_CODE_PERMISSION_MODE=dontAsk`, o resto é negado sem
+  perguntar. Os servidores MCP do seu Claude Code não são carregados (`--strict-mcp-config`).
+- **OpenCode:** as permissões de `OPENCODE_PERMISSIONS` (padrão: `bash=deny,external_directory=deny`) são injetadas via
+  `OPENCODE_CONFIG_CONTENT`. `OPENCODE_AUTO_APPROVE=true` aprova automaticamente o que não estiver negado.
+
+Só adicione `Bash` ou `bash=allow` se aceitar que comandos vindos do Telegram rodem no seu computador. Nesse caso, eles
+também terão acesso ao token do bot e às chaves de API presentes no ambiente.
+
+## Problemas comuns
+
+| Sintoma | O que fazer |
+|---------|-------------|
+| O bot não responde | Confira se seu ID está em `TELEGRAM_ALLOWED_USER_IDS`; quem não está na lista é ignorado sem aviso. |
+| Erro de conflito ao iniciar | Mantenha só uma instância do bot com o mesmo token. |
+| Uma skill não aparece em `/skills` | Confira se a pasta tem `SKILL.md` e se o YAML é válido, com `name` e `description`. |
+| Voz não funciona | Veja em `/status` qual dependência falta. |
+| "API Provider ... falhou" | Confira as credenciais do provedor e configure um fallback. |
+| Alterei o `.env` e nada mudou | Reinicie o bot: o `npm run dev` só observa `src/`. |
+| O LinkedIn recusou o token | Ele provavelmente venceu. Gere outro, atualize o `.env` e reinicie. |
+
+## Arquitetura
+
+```text
+Telegram ─► TelegramInputHandler (whitelist) ─► AgentController (Facade)
+                                                  ├─ MemoryManager ─► Conversation/MessageRepository ─► SQLite (WAL)
+                                                  ├─ SkillLoader ─► SkillRouter (passo zero) ─► SkillExecutor
+                                                  └─► AgentLoop (ReAct) ◄─► ToolRegistry / ProviderFactory
+                                                          └─► TelegramOutputHandler (Text | File | Audio | Error)
+                                                                  └─► LinkedInDraftHandler ─► LinkedInClient
+```
+
+| Pasta | Conteúdo |
+|-------|----------|
+| `src/agent` | `AgentController`, `AgentLoop` (ReAct, limite `MAX_ITERATIONS`), `SystemPromptBuilder` |
+| `src/config` | Leitura e validação das variáveis de ambiente |
+| `src/diagnostics` | `DependencyChecker`, que verifica binários no início e no `/status` |
+| `src/linkedin` | Cliente da API e rascunhos pendentes |
+| `src/llm` | `ProviderFactory`, `FallbackProvider`, provedores compatíveis com a API OpenAI e provedores CLI (`src/llm/cli`) |
+| `src/media` | Extração de PDF e `.md`, Whisper, Edge-TTS e conversões de áudio com ffmpeg |
+| `src/memory` | SQLite, repositórios, `MemoryManager` (janela `MEMORY_WINDOW_SIZE`), backups diários e VACUUM quando compensa |
+| `src/skills` | Loader com hot-reload, roteador e executor |
+| `src/telegram` | Handlers de entrada e saída, botões do LinkedIn, downloader de anexos e estratégias de saída |
+| `src/tools` | `BaseTool`, `ToolRegistry`, `ToolFactory` e tools de data/hora e de arquivos no `workspace/` |
+| `.agents/skills` | Skills instaladas |
+| `specs` | Especificações do projeto |
+
+## Desenvolvimento
+
+```bash
+npm test            # testes
+npm run typecheck   # verificação de tipos
+```
+
+## Licença
+
+[MIT](LICENSE)
